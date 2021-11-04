@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>Test</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="test">
+  <style>
+    html,
+    body {
+      padding: 0;
+      margin: 0;
+      background: gray;
+    }
+
+    #canvas {
+      display: block;
+    }
+
+    #tip {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas" width="530" height="298"></canvas>
+  <div id="tip">
+    <ul>
+      <li>drag & wheel</li>
+    </ul>
+  </div>
+  <script>
+    const $canvas = document.getElementById("canvas");
+    const context = $canvas.getContext("2d");
+    const p = [
+      { x: 50, y: 30 }, // start
+      { x: 150, y: 130 }, // end
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+    ];
+    let distance = 30;
+
+    const mouseState = {
+      isDown: false,
+      selectedPoint: null,
+    };
+    const lerp = (a, b, t) => {
+      return a + (b - a) * t;
+    };
+    const magnitude = (x, y) => {
+      return Math.sqrt(x * x + y * y);
+    };
+    const update = (pos) => {
+      if (pos != null && mouseState.selectedPoint != null) {
+        mouseState.selectedPoint.x = pos.x;
+        mouseState.selectedPoint.y = pos.y;
+      }
+
+      p[2].x = lerp(p[0].x, p[1].x, 0.5);
+      p[2].y = lerp(p[0].y, p[1].y, 0.5);
+
+      const dx = p[1].x - p[0].x;
+      const dy = p[1].y - p[0].y;
+      const d = magnitude(dx, dy);
+      p[3].x = p[2].x + dy / d * distance;
+      p[3].y = p[2].y - dx / d * distance;
+    };
+    const render = () => {
+      context.clearRect(0, 0, $canvas.width, $canvas.height);
+      context.strokeStyle = "darkslategray";
+      context.beginPath();
+      context.moveTo(p[0].x, p[0].y);
+      context.lineTo(p[1].x, p[1].y);
+      context.stroke();
+      context.strokeStyle = "red";
+      context.beginPath();
+      context.moveTo(p[2].x, p[2].y);
+      context.lineTo(p[3].x, p[3].y);
+      context.stroke();
+      context.strokeStyle = "black";
+      context.beginPath();
+      context.moveTo(p[0].x, p[0].y);
+      context.quadraticCurveTo(p[3].x, p[3].y, p[1].x, p[1].y);
+      context.stroke();
+      for (const [i, position] of p.entries()) {
+        if (mouseState.selectedPoint == position) {
+          context.fillStyle = "goldenrod";
+        } else {
+          context.fillStyle = "black";
+        }
+        if (Number(i) >= 2) {
+          context.fillStyle = "darkslategray";
+        }
+        context.beginPath();
+        context.arc(position.x, position.y, 5, 0, 2 * Math.PI);
+        context.fill();
+      }
+    };
+    const resize = () => {
+      $canvas.width = window.innerWidth;
+      $canvas.height = window.innerHeight;
+      update();
+      render();
+    };
+
+    $canvas.addEventListener("mousedown", (e) => {
+      mouseState.isDown = true;
+      const m0 = magnitude(e.offsetX - p[0].x, e.offsetY - p[0].y);
+      const m1 = magnitude(e.offsetX - p[1].x, e.offsetY - p[1].y);
+      if (Math.min(m0, m1) < 10) {
+        if (m0 < m1) {
+          mouseState.selectedPoint = p[0];
+        } else {
+          mouseState.selectedPoint = p[1];
+        }
+      } else {
+        mouseState.selectedPoint = null;
+      }
+      render();
+    });
+    $canvas.addEventListener("mousemove", (e) => {
+      if (mouseState.isDown) {
+        update({
+          x: e.offsetX,
+          y: e.offsetY,
+        });
+        render();
+      }
+    });
+    window.addEventListener("mouseup", (e) => {
+      mouseState.isDown = false;
+      mouseState.selectedPoint = null;
+      render();
+    });
+    window.addEventListener("mousewheel", (e) => {
+      distance += -e.deltaY * .02;
+      distance = Math.max(Math.min(distance, 100), 10);
+      update();
+      render();
+    });
+    window.addEventListener("resize", resize);
+    update();
+    resize();
+  </script>
+</body>
+
+</html>
